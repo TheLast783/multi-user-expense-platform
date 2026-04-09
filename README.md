@@ -22,7 +22,7 @@ This platform automates the bridge between banking transactions and financial ac
 | **Android** | Kotlin, Jetpack Compose, Room Database, Retrofit, Coroutines |
 | **Backend** | Python 3.12+, FastAPI, SQLAlchemy, PostgreSQL, HTTPX |
 | **Auth** | Google OAuth 2.0 (Identity isolation) |
-| **Deployment** | Render (Production Cloud), Docker (Ready) |
+| **Deployment** | Render (Production Cloud) |
 
 ---
 
@@ -43,7 +43,7 @@ graph TD
 
 ---
 
-## Resume Value
+## Technical Highlights
 This project demonstrates expertise in:
 - **Scalability**: Designed to handle background tasks for 2,000+ simultaneous users.
 - **Reliability**: Zero-loss data capture even with dismissed notifications.
