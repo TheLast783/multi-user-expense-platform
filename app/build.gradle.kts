@@ -20,6 +20,21 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Load Secrets
+        val secretsFile = rootProject.file("secrets.properties")
+        val secrets = java.util.Properties()
+        if (secretsFile.exists()) {
+            secrets.load(secretsFile.inputStream())
+        }
+        
+        buildConfigField("String", "SERVER_CLIENT_ID", "\"${secrets.getProperty("SERVER_CLIENT_ID") ?: ""}\"")
+        buildConfigField("String", "BASE_URL", "\"${secrets.getProperty("BASE_URL") ?: ""}\"")
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 
     buildTypes {
@@ -34,9 +49,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-    }
-    buildFeatures {
-        compose = true
     }
     packaging {
         resources {

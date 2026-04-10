@@ -30,7 +30,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit) {
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(false) }
     
-    val serverClientId = "566994870612-0hcm24p1trvpuc32c8iocuqdv8sk5udq.apps.googleusercontent.com" 
+    val serverClientId = com.expensetracker.BuildConfig.SERVER_CLIENT_ID
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()

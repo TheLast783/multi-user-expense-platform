@@ -80,7 +80,7 @@ interface ExpenseApi {
 object RetrofitClient {
     // Use 10.0.2.2 for Emulator, or your PC's WiFi IP for a real device
     // Professional Cloud URL (Render)
-    private const val BASE_URL = "https://expense-backend-7umk.onrender.com/"
+    private val BASE_URL = com.expensetracker.BuildConfig.BASE_URL
 
     val api: ExpenseApi by lazy {
         Retrofit.Builder()

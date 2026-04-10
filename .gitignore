@@ -14,7 +14,14 @@
 .cxx
 local.properties
 
-# Backend
+# Secrets
+/secrets.properties
+
+# Backend (Purged from public repo)
+/backend/
+/render.yaml
+
+# Python/Other
 backend/__pycache__/
 backend/expenses.db
 *.pyc
