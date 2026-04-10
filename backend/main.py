@@ -147,8 +147,9 @@ async def sync_expenses(expenses: List[ExpenseCreate], background_tasks: Backgro
     for e in expenses:
         # Check if exists FOR THIS USER
         db_expense = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == email, models.ExpenseDB.originalSms == e.originalSms).first()
+        clean_contact = e.assignedContact.strip()
+        
         if not db_expense:
-            clean_contact = e.assignedContact.strip()
             db_expense = models.ExpenseDB(
                 user_email=email,
                 title=e.title,
@@ -165,7 +166,19 @@ async def sync_expenses(expenses: List[ExpenseCreate], background_tasks: Backgro
                 remainingAmount=e.remainingAmount
             )
             db.add(db_expense)
-            db.flush()
+        else:
+            # UPDATE EXISTING (Fix: Bug - Persistence after categorization)
+            db_expense.assignedContact = clean_contact
+            db_expense.note = e.note.strip()
+            db_expense.status = e.status
+            db_expense.remainingAmount = e.remainingAmount
+            # Also update bank/paymentId if they were missing before
+            if not db_expense.bank or db_expense.bank == "Unknown Bank":
+                db_expense.bank = e.bank
+            if not db_expense.paymentId:
+                db_expense.paymentId = e.paymentId
+
+        db.flush()
 
             # Debt Resolver (Filtered by User)
             if db_expense.type == "Credited" and clean_contact != "User":
