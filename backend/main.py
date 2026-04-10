@@ -269,13 +269,15 @@ def clear_database_all(db: Session = Depends(get_db), email: str = Depends(get_u
 @app.post("/api/invoice/send")
 def trigger_manual(payload: InvoiceRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db), email: str = Depends(get_user_email)):
     # Verify data exists for this user
-    p_count = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == email, models.ExpenseDB.assignedContact == payload.contactName, models.ExpenseDB.status == "Paid").count()
-    u_count = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == email, models.ExpenseDB.assignedContact == payload.contactName, models.ExpenseDB.status == "Unpaid").count()
+    # Verify data exists for this user (Case-Insensitive - Bug Fix)
+    clean_name = payload.contactName.strip()
+    p_count = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == email, models.ExpenseDB.assignedContact.ilike(clean_name), models.ExpenseDB.status == "Paid").count()
+    u_count = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == email, models.ExpenseDB.assignedContact.ilike(clean_name), models.ExpenseDB.status == "Unpaid").count()
     
     if p_count == 0 and u_count == 0:
         return {"status": "error", "message": "No data found"}
         
-    background_tasks.add_task(send_dual_emails, email, payload.contactName, payload.email)
+    background_tasks.add_task(send_dual_emails, email, clean_name, payload.email.strip())
     return {"status": "success", "message": "Queued"}
 
 # --- ASYNC HIGH-SCALE MAILER ---
@@ -309,9 +311,10 @@ async def send_gmail_raw(db: Session, user_email: str, to: str, subject: str, ht
 async def send_dual_emails(user_email: str, contact_name: str, target_email: str):
     db = SessionLocal()
     try:
-        # Fetch fresh data for THIS user
-        paid = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == user_email, models.ExpenseDB.assignedContact == contact_name, models.ExpenseDB.status == "Paid", models.ExpenseDB.type == "Credited").all()
-        unpaid = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == user_email, models.ExpenseDB.assignedContact == contact_name, models.ExpenseDB.status == "Unpaid").all()
+        # Fetch fresh data for THIS user (Case-Insensitive)
+        clean_name = contact_name.strip()
+        paid = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == user_email, models.ExpenseDB.assignedContact.ilike(clean_name), models.ExpenseDB.status == "Paid", models.ExpenseDB.type == "Credited").all()
+        unpaid = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == user_email, models.ExpenseDB.assignedContact.ilike(clean_name), models.ExpenseDB.status == "Unpaid").all()
         
         if paid:
             total_p = sum([float(e.amount.replace(',', '')) for e in paid if e.amount])
@@ -329,7 +332,7 @@ async def send_dual_emails(user_email: str, contact_name: str, target_email: str
             
             if await send_gmail_raw(db, user_email, target_email, f"Receipt: Payment Confirmed (₹{total_p})", html):
                 # Archive
-                all_res = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == user_email, models.ExpenseDB.assignedContact == contact_name, models.ExpenseDB.status == "Paid").all()
+                all_res = db.query(models.ExpenseDB).filter(models.ExpenseDB.user_email == user_email, models.ExpenseDB.assignedContact.ilike(clean_name), models.ExpenseDB.status == "Paid").all()
                 for e in all_res: e.status = "Sent"
                 db.commit()
             await asyncio.sleep(2)
