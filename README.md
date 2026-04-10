@@ -4,6 +4,14 @@ A professional-grade, full-stack application for automated expense tracking, rea
 
 ---
 
+## 🔒 Note on Repository Structure & Security
+To protect intellectual property and sensitive credentials, this public repository contains the secondary **Android Client** code and the **System Architecture**.
+
+- **Core Backend**: The original FastAPI business logic, database schemas, and mailing engines have been moved to a **Private Repository** to ensure secure production deployment.
+- **Secrets Management**: All API keys, Google Client IDs, and Server Endpoints have been purged from the version history and are now managed via local `BuildConfig` and environment variables.
+
+---
+
 ## Overview
 This platform automates the bridge between banking transactions and financial accountability. It intercepts banking SMS messages on Android, parses them into structured records, and synchronizes them with a multi-tenant FastAPI cloud backend. Key features include automated e-mail invoicing for debt management and real-time transaction deduplication.
 
