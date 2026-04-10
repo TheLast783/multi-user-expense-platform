@@ -127,6 +127,19 @@ class SmsReceiver : BroadcastReceiver() {
             notificationManager.notify(lockId.hashCode(), notification)
             
             try {
+                val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                val email = prefs.getString("user_email", "") ?: ""
+                if (email.isNotEmpty()) {
+                    val syncList = listOf(com.expensetracker.data.network.ExpenseSyncPayload(
+                        entity.title, entity.date, entity.amount, entity.isExpense, 
+                        entity.originalSms, entity.paymentId, entity.assignedContact, 
+                        entity.note, entity.type, entity.bank, entity.status, entity.remainingAmount
+                    ))
+                    com.expensetracker.data.network.RetrofitClient.api.syncExpenses(email, syncList)
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+
+            try {
                 context.startActivity(dialogIntent)
             } catch (e: Exception) {}
         }

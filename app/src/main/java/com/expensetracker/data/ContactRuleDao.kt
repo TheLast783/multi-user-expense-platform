@@ -18,6 +18,9 @@ interface ContactRuleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRule(rule: ContactRuleEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRules(rules: List<ContactRuleEntity>)
+
     @Delete
     suspend fun deleteRule(rule: ContactRuleEntity)
 

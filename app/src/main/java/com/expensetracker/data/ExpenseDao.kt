@@ -22,6 +22,12 @@ interface ExpenseDao {
     @Query("UPDATE expenses SET assignedContact = 'User' WHERE assignedContact = :contactName")
     suspend fun unassignContact(contactName: String)
 
+    @Query("SELECT * FROM expenses")
+    suspend fun getAllExpensesSync(): List<ExpenseEntity>
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(expenses: List<ExpenseEntity>)
+
     @Query("DELETE FROM expenses")
     suspend fun deleteAllExpenses()
 }

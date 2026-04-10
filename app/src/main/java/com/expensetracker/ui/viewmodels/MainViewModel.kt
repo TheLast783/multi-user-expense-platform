@@ -44,47 +44,74 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val email = getEmail()
                 if (email.isEmpty()) return@launch
 
-                // Fetch Expenses first
-                val remoteExpenses = com.expensetracker.data.network.RetrofitClient.api.fetchExpenses(email)
-                
-                // Only if network call succeeds, wipe local cache to repopulate
-                expenseDao.deleteAllExpenses()
-                
-                remoteExpenses.forEach {
-                    val entity = ExpenseEntity(
-                        title = it.title,
-                        date = it.date,
-                        amount = it.amount,
-                        isExpense = it.isExpense,
-                        originalSms = it.originalSms,
-                        paymentId = it.paymentId,
-                        note = it.note,
-                        type = it.type,
-                        assignedContact = it.assignedContact,
-                        bank = it.bank,
-                        status = it.status,
-                        remainingAmount = it.remainingAmount
-                    )
-                    expenseDao.insertExpense(entity)
+                // 1. UPLOAD LOCAL DATA FIRST (Fix: Bug - Data Loss on Login)
+                val localExpenses = expenseDao.getAllExpensesSync()
+                if (localExpenses.isNotEmpty()) {
+                    val uploadPayloads = localExpenses.map {
+                        com.expensetracker.data.network.ExpenseSyncPayload(
+                            it.title, it.date, it.amount, it.isExpense, it.originalSms, 
+                            it.paymentId, it.assignedContact, it.note, it.type, it.bank, it.status, it.remainingAmount
+                        )
+                    }
+                    com.expensetracker.data.network.RetrofitClient.api.syncExpenses(email, uploadPayloads)
                 }
 
-                // ALSO FETCH RULES (FIX: Bug 1 - Retention)
+                val localRules = ruleDao.getAllRulesSync()
+                if (localRules.isNotEmpty()) {
+                    val uploadRules = localRules.map {
+                        com.expensetracker.data.network.RuleSyncPayload(
+                            it.name, it.email, it.frequencyType, it.frequencyValue, it.currentCount, it.isEnabled
+                        )
+                    }
+                    com.expensetracker.data.network.RetrofitClient.api.syncRules(email, uploadRules)
+                }
+
+                // 2. NOW DOWNLOAD FRESH DATA
+                val remoteExpenses = com.expensetracker.data.network.RetrofitClient.api.fetchExpenses(email)
+                if (remoteExpenses.isNotEmpty()) {
+                    expenseDao.deleteAllExpenses()
+                    expenseDao.insertExpenses(remoteExpenses.map {
+                        ExpenseEntity(
+                            title = it.title, date = it.date, amount = it.amount, isExpense = it.isExpense,
+                            originalSms = it.originalSms, paymentId = it.paymentId, note = it.note,
+                            type = it.type, assignedContact = it.assignedContact, bank = it.bank,
+                            status = it.status, remainingAmount = it.remainingAmount
+                        )
+                    })
+                }
+
                 val remoteRules = com.expensetracker.data.network.RetrofitClient.api.fetchRules(email)
-                ruleDao.deleteAllRules()
-                remoteRules.forEach {
-                    ruleDao.insertRule(ContactRuleEntity(
-                        name = it.name,
-                        email = it.email,
-                        frequencyType = it.frequencyType,
-                        frequencyValue = it.frequencyValue,
-                        currentCount = it.currentCount,
-                        isEnabled = it.isEnabled
-                    ))
+                if (remoteRules.isNotEmpty()) {
+                    ruleDao.deleteAllRules()
+                    ruleDao.insertRules(remoteRules.map {
+                        ContactRuleEntity(
+                            name = it.name, email = it.email, frequencyType = it.frequencyType,
+                            frequencyValue = it.frequencyValue, currentCount = it.currentCount, isEnabled = it.isEnabled
+                        )
+                    })
                 }
             } catch (e: Exception) {
-                // If server is offline, we just keep showing local cached data
                 e.printStackTrace()
             }
+        }
+    }
+
+    fun syncExpensesOnly() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val email = getEmail()
+                if (email.isEmpty()) return@launch
+                val local = expenseDao.getAllExpensesSync()
+                if (local.isNotEmpty()) {
+                    val payloads = local.map {
+                        com.expensetracker.data.network.ExpenseSyncPayload(
+                            it.title, it.date, it.amount, it.isExpense, it.originalSms,
+                            it.paymentId, it.assignedContact, it.note, it.type, it.bank, it.status, it.remainingAmount
+                        )
+                    }
+                    com.expensetracker.data.network.RetrofitClient.api.syncExpenses(email, payloads)
+                }
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
