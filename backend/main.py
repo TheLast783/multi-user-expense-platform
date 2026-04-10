@@ -180,42 +180,42 @@ async def sync_expenses(expenses: List[ExpenseCreate], background_tasks: Backgro
 
         db.flush()
 
-            # Debt Resolver (Filtered by User)
-            if db_expense.type == "Credited" and clean_contact != "User":
-                try:
-                    val = float(db_expense.amount.replace(',', ''))
-                    unpaids = db.query(models.ExpenseDB).filter(
-                        models.ExpenseDB.user_email == email,
-                        models.ExpenseDB.assignedContact.ilike(clean_contact),
-                        models.ExpenseDB.status == "Unpaid",
-                        models.ExpenseDB.note.ilike(db_expense.note)
-                    ).order_by(models.ExpenseDB.id.asc()).all()
+        # Debt Resolver (Filtered by User)
+        if db_expense.type == "Credited" and clean_contact != "User":
+            try:
+                val = float(db_expense.amount.replace(',', ''))
+                unpaids = db.query(models.ExpenseDB).filter(
+                    models.ExpenseDB.user_email == email,
+                    models.ExpenseDB.assignedContact.ilike(clean_contact),
+                    models.ExpenseDB.status == "Unpaid",
+                    models.ExpenseDB.note.ilike(db_expense.note)
+                ).order_by(models.ExpenseDB.id.asc()).all()
 
-                    for u in unpaids:
-                        if val <= 0: break
-                        if u.remainingAmount <= val:
-                            val -= u.remainingAmount
-                            u.remainingAmount = 0.0
-                            u.status = "Paid"
-                        else:
-                            u.remainingAmount -= val
-                            val = 0.0
-                    
-                    if val <= 0:
-                        db_expense.status = "Paid"
-                        db_expense.remainingAmount = 0.0
+                for u in unpaids:
+                    if val <= 0: break
+                    if u.remainingAmount <= val:
+                        val -= u.remainingAmount
+                        u.remainingAmount = 0.0
+                        u.status = "Paid"
                     else:
-                        db_expense.status = "Paid"
-                        db_expense.remainingAmount = val
-                except: pass
+                        u.remainingAmount -= val
+                        val = 0.0
+                
+                if val <= 0:
+                    db_expense.status = "Paid"
+                    db_expense.remainingAmount = 0.0
+                else:
+                    db_expense.status = "Paid"
+                    db_expense.remainingAmount = val
+            except: pass
 
-            # Trigger Logic
-            rule = db.query(models.ContactRuleDB).filter(models.ContactRuleDB.user_email == email, models.ContactRuleDB.name == clean_contact).first()
-            if rule and rule.isEnabled:
-                rule.currentCount += 1
-                if rule.currentCount >= rule.frequencyValue:
-                    pending_emails[rule.name] = rule.email
-                    rule.currentCount = 0
+        # Trigger Logic
+        rule = db.query(models.ContactRuleDB).filter(models.ContactRuleDB.user_email == email, models.ContactRuleDB.name == clean_contact).first()
+        if rule and rule.isEnabled:
+            rule.currentCount += 1
+            if rule.currentCount >= rule.frequencyValue:
+                pending_emails[rule.name] = rule.email
+                rule.currentCount = 0
                     
     db.commit()
     for contact_name, target_email in pending_emails.items():
